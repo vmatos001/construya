@@ -34,6 +34,29 @@ export interface Cliente {
   notas?: string
 }
 
+export interface FerreteriaFuente {
+  id: string
+  nombre: string
+  url_base?: string
+  activo: boolean
+  ultimo_scrape?: string
+  status: 'ok' | 'error' | 'rate_limited'
+}
+
+export interface BancoPrecioFuente {
+  id: string
+  banco_precio_id: string
+  fuente_id: string
+  sku_externo?: string
+  url_producto?: string
+  precio: number
+  disponible: boolean
+  fecha_scrape: string
+  raw_nombre?: string
+  raw_sku?: string
+  fuente?: FerreteriaFuente
+}
+
 export interface BancoPrecio {
   id: string
   empresa_id?: string
@@ -45,6 +68,7 @@ export interface BancoPrecio {
   precio_ref: number
   activo: boolean
   fuente?: string
+  precios_fuentes?: BancoPrecioFuente[]
 }
 
 export interface CotizacionPartida {

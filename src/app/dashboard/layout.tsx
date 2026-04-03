@@ -17,60 +17,77 @@ const nav = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname()
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-[var(--background)]">
       {/* ── Sidebar ── */}
-      <aside className="w-60 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col">
+      <aside className="sidebar w-64 flex-shrink-0 flex flex-col">
         {/* Logo */}
-        <div className="px-5 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-brand-700 rounded-lg flex items-center justify-center">
-              <HardHat className="w-4 h-4 text-white" />
+        <div className="px-6 py-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#121212] rounded-2xl flex items-center justify-center shadow-lg">
+              <HardHat className="w-5 h-5 text-[#b6f09c]" />
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-900">ContruYA</p>
-              <p className="text-xs text-gray-400">El Salvador</p>
+              <p className="text-lg font-bold text-gray-900 tracking-tighter">ContruYA</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">El Salvador</p>
             </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        <nav className="flex-1 px-4 space-y-1">
           {nav.map(({ href, label, icon: Icon }) => {
-            const active = path === href || path.startsWith(href + '/')
+            const active = path === href || (href !== '/dashboard' && path.startsWith(href))
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors group',
+                  'flex items-center gap-3 px-4 py-3 rounded-2xl text-sm transition-all duration-300 group',
                   active
-                    ? 'bg-brand-50 text-brand-700 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-[#b6f09c] text-[#121212] font-bold shadow-sm'
+                    : 'text-gray-500 hover:bg-white hover:text-gray-900 hover:shadow-sm'
                 )}
               >
-                <Icon className={cn('w-4 h-4 flex-shrink-0', active ? 'text-brand-700' : 'text-gray-400 group-hover:text-gray-600')} />
+                <Icon className={cn('w-5 h-5 flex-shrink-0 transition-colors', active ? 'text-[#121212]' : 'text-gray-400 group-hover:text-gray-600')} />
                 {label}
-                {active && <ChevronRight className="w-3 h-3 ml-auto text-brand-500" />}
+                {active && <ChevronRight className="w-4 h-4 ml-auto opacity-40" />}
               </Link>
             )
           })}
         </nav>
 
         {/* Settings */}
-        <div className="px-3 py-4 border-t border-gray-100">
+        <div className="px-4 py-8">
           <Link
             href="/dashboard/configuracion"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all",
+              path === '/dashboard/configuracion' 
+                ? "bg-[#b6f09c] text-[#121212] font-bold" 
+                : "text-gray-400 hover:bg-white hover:text-gray-600"
+            )}
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-5 h-5" />
             Configuración
           </Link>
+          
+          <div className="mt-6 px-2">
+             <div className="bg-[#121212] rounded-3xl p-4 flex items-center gap-3 shadow-xl">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#b6f09c] to-[#c5beff]" />
+                <div className="flex-1 min-w-0">
+                   <p className="text-xs font-bold text-white truncate">Victor Matos</p>
+                   <p className="text-[9px] text-gray-400 font-bold uppercase truncate">Pro Plan</p>
+                </div>
+             </div>
+          </div>
         </div>
       </aside>
 
       {/* ── Main ── */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
+      <main className="flex-1 overflow-y-auto pt-4 pr-4 pb-4">
+        <div className="h-full bg-white/20 backdrop-blur-sm rounded-[3rem] border border-white/40 shadow-inner overflow-y-auto">
+          {children}
+        </div>
       </main>
     </div>
   )
