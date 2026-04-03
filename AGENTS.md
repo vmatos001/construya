@@ -117,21 +117,20 @@ src/
 - Use `useFieldArray` for dynamic/repeatable field groups (areas, partidas)
 - Use boolean loading state for submissions (`guardando`)
 
-### Styling
-- Tailwind CSS only — no CSS modules, no styled-components, no inline styles
-- Use `cn()` from `@/lib/utils` for conditional class merging
-- Custom component classes in `globals.css` (`@layer components`):
-  `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.input`, `.label`, `.card`, `.badge-*`
-- Brand colors: `brand-50/100/500/700/900`, Accent: `accent-400/600`
-- Page layout: `p-6 max-w-5xl mx-auto` (or `max-w-6xl` for wide forms)
-- Responsive grids: `grid grid-cols-2 lg:grid-cols-4 gap-4`
-- Two-column forms: `grid grid-cols-1 lg:grid-cols-3 gap-6` with `lg:col-span-2`
+### Styling (Premium Mint/Dark)
+- Use the established Design System in `globals.css`:
+  - **Mint Primary:** `#b6f09c` (indicator for active states and primary buttons)
+  - **Card Dark:** `#121212` (high-contrast cards and backgrounds)
+  - **Accent Purple:** `#c5beff`
+  - **Background:** `#edf2ea`
+- Geometry: Extreme rounding (`rounded-[2.5rem]` for cards, `rounded-2xl` for buttons).
+- Glassmorphism: Use `.sidebar` class for semi-transparent, blurred menu backgrounds.
 
 ### Data Fetching
-- Supabase browser client via `createClient()` from `@/lib/supabase`
-- Client-side fetching in `useEffect` with `.from().select().then()` chains
-- No `async/await` for data fetching — use Promise `.then()` style
-- Cast results to known types: `data as BancoPrecio[]`
+- Supabase browser client via `createClient()` from `@/lib/supabase`.
+- **Async/Await is allowed and preferred** for complex data fetching and Edge Function calls.
+- Use `supabase.functions.invoke()` or standard `fetch()` to call Edge Functions.
+- Cast results to known types: `data as BancoPrecio[]`.
 - No global state management — use `useState` for local state
 - Use `localStorage` for draft persistence
 
