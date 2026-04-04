@@ -3,13 +3,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// Algolia config extraído de window.algoliaConfig de sv.epaenlinea.com
+// CORS Headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Algolia config extraído de sv.epaenlinea.com
 const ALGOLIA_APP_ID    = "D8WPXV9MEC";
 const ALGOLIA_API_KEY   = "MmIxYjA5Y2Y5ZDU5NzdlNWYyMTRiODUwN2RkOGI3NTU0ODUwOGY0Mzk4ZjgyNzY5NGNmOTZiOTdlM2QyZTMzNnRhZ0ZpbHRlcnM9";
 const ALGOLIA_INDEX     = "prodsv_Soyapango_products";
 const ALGOLIA_URL       = `https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${ALGOLIA_INDEX}/query`;
-const EPA_BASE          = "https://sv.epaenlinea.com";
-const PAGE_SIZE         = 100;
+const PAGE_SIZE         = 50; // Reducido para evitar timeouts
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -43,21 +48,37 @@ async function fetchAlgoliaPage(page: number): Promise<{ hits: AlgoliaProduct[];
   return { hits: data.hits, nbPages: data.nbPages };
 }
 
-// --- Match to banco_precios ---
-async function matchBancoPrecio(sku: string, nombre: string): Promise<string | null> {
-  // 1. SKU exacto
-  const { data: s } = await supabase.from("banco_precios").select("id").eq("codigo", sku).single();
-  if (s) return s.id;
-  // 2. Primeras 3 palabras del nombre
-  const words = nombre.split(" ").slice(0, 3).join(" ");
-  const { data: n } = await supabase.from("banco_precios").select("id").ilike("descripcion", `%${words}%`).limit(1).single();
-  return n?.id ?? null;
+// --- Match or Create banco_precios ---
+async function getOrCreateBancoPrecio(sku: string, nombre: string, categoriaStr?: string): Promise<string | null> {
+  // 1. Buscar por SKU/código
+  const { data: b } = await supabase.from("banco_precios").select("id").eq("codigo", sku).single();
+  if (b) return b.id;
+
+  // 2. Si no existe, crear uno nuevo (poblar inicial)
+  const { data: nuevo, error } = await supabase
+    .from("banco_precios")
+    .insert({
+      codigo: sku,
+      descripcion: nombre,
+      unidad: "Unidad", // Valor por defecto
+      categoria: "material", // Por defecto material, podrías filtrar categoriaStr
+      activo: true
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error(`Error creando banco_precios para SKU ${sku}:`, error.message);
+    return null;
+  }
+  return nuevo.id;
 }
 
 // --- Main handler ---
 Deno.serve(async (req) => {
-  if (req.method !== "GET" && req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+  // Handle CORS Preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
 
   const urlTest = new URL(req.url).searchParams.get("test") === "true";
@@ -74,59 +95,57 @@ Deno.serve(async (req) => {
   let inserted = 0, errors = 0, totalProducts = 0;
 
   try {
-    // Primera página para saber cuántas hay
+    // Primera página
     const first = await fetchAlgoliaPage(0);
-    const nbPages = isTest ? 1 : first.nbPages;
+    const nbPages = isTest ? 1 : Math.min(first.nbPages, 20); // Limitamos para el MVP
     console.log(`EPA Algolia: ${nbPages} páginas (~${nbPages * PAGE_SIZE} productos)`);
 
     const allHits: AlgoliaProduct[] = [...first.hits];
 
-    // Fetch páginas restantes en batches de 5
+    // Fetch batch
     if (!isTest) {
-      for (let p = 1; p < nbPages; p += 5) {
-        const batch = Array.from({ length: Math.min(5, nbPages - p) }, (_, i) => fetchAlgoliaPage(p + i));
+      for (let p = 1; p < nbPages; p += 2) {
+        const batch = Array.from({ length: Math.min(2, nbPages - p) }, (_, i) => fetchAlgoliaPage(p + i));
         const pages = await Promise.all(batch);
         pages.forEach(pg => allHits.push(...pg.hits));
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 200));
       }
     }
 
     totalProducts = allHits.length;
 
-    // Insertar en banco_precios_fuentes
-    const rows = await Promise.all(allHits.map(async (hit) => {
+    // Procesar en series para no sobrecargar las conexiones a Supabase y asegurar que banco_precios se crea antes
+    const validRows = [];
+    for (const hit of allHits) {
       const precio = hit.price?.USD?.default;
-      if (!precio) return null;
+      if (!precio) continue;
 
-      const banco_precio_id = await matchBancoPrecio(hit.sku, hit.name);
+      const banco_precio_id = await getOrCreateBancoPrecio(hit.sku, hit.name);
 
-      return {
+      validRows.push({
         fuente_id,
         banco_precio_id,
         sku_externo:   hit.sku,
         raw_sku:       hit.sku,
         raw_nombre:    hit.name,
-        url_producto:  hit.url?.startsWith("http") ? hit.url : `${EPA_BASE}/${hit.url}`,
+        url_producto:  hit.url?.startsWith("http") ? hit.url : `https://sv.epaenlinea.com/${hit.url}`,
         precio,
         disponible:    !!hit.in_stock,
         fecha_scrape:  new Date().toISOString(),
-      };
-    }));
-
-    const validRows = rows.filter(Boolean);
+      });
+    }
 
     if (isTest) {
-      // En test: solo loguear sin insertar
       console.log("TEST sample:", JSON.stringify(validRows.slice(0, 3), null, 2));
       inserted = validRows.length;
     } else {
-      // Upsert en lotes de 200
-      for (let i = 0; i < validRows.length; i += 200) {
+      // Upsert
+      for (let i = 0; i < validRows.length; i += 50) {
         const { error } = await supabase
           .from("banco_precios_fuentes")
-          .insert(validRows.slice(i, i + 200));
+          .upsert(validRows.slice(i, i + 50), { onConflict: 'fuente_id,sku_externo' });
         if (error) { console.error(error); errors++; }
-        else inserted += Math.min(200, validRows.length - i);
+        else inserted += Math.min(50, validRows.length - i);
       }
     }
 
@@ -138,12 +157,12 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ ok: true, totalProducts, inserted, errors, pages: nbPages, test: isTest }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (e) {
     console.error(e);
     await supabase.from("ferreteria_fuentes").update({ status: "error" }).eq("id", fuente_id);
-    return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers: corsHeaders });
   }
 });
