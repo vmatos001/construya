@@ -17,9 +17,9 @@ const nav = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname()
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--background)]">
+    <div className="flex h-screen overflow-hidden bg-[var(--background)] print:h-auto print:overflow-visible print:block print:bg-white">
       {/* ── Sidebar ── */}
-      <aside className="sidebar w-64 flex-shrink-0 flex flex-col">
+      <aside className="sidebar w-64 flex-shrink-0 flex flex-col print:hidden">
         {/* Logo */}
         <div className="px-6 py-8">
           <div className="flex items-center gap-3">
@@ -84,8 +84,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* ── Main ── */}
-      <main className="flex-1 overflow-y-auto pt-4 pr-4 pb-4">
-        <div className="h-full bg-white/20 backdrop-blur-sm rounded-[3rem] border border-white/40 shadow-inner overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pt-4 pr-4 pb-4 print:p-0 print:overflow-visible">
+        <div className="h-full bg-white/20 backdrop-blur-sm rounded-[3rem] border border-white/40 shadow-inner overflow-y-auto print:h-auto print:bg-white print:border-none print:shadow-none print:rounded-none print:overflow-visible">
           {children}
         </div>
       </main>
