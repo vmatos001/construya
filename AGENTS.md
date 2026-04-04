@@ -23,11 +23,11 @@ src/
     page.tsx              # Landing page → redirects to /dashboard
     globals.css           # Tailwind + @layer components classes
     dashboard/
-      layout.tsx          # Dashboard shell (sidebar + nav, client component)
+      layout.tsx          # Dashboard shell (sidebar + nav, client component), contains root print:overflow overrides
       page.tsx            # Dashboard home (stats cards + quick links)
-      cotizaciones/       # Quotes module (only functional module)
-        page.tsx          # List view (fetches from Supabase)
-        nueva/page.tsx    # New quote form (client component, RHF + Zod)
+      cotizaciones/       # Quotes module (MVP Foundation)
+        page.tsx          # List view with dynamic KPIs (Enviadas, Aprobadas, etc.)
+        nueva/page.tsx    # Quote builder with auto-status shifts and native print() triggers
       obras/              # Construction sites (placeholder)
       clientes/           # CRM (placeholder)
       banco/              # Price bank (placeholder)
@@ -105,6 +105,11 @@ src/
 - Mark optional DB fields with `?`
 - All `id` fields are `string` type
 - Infer form types from Zod: `type FormValues = z.infer<typeof schema>`
+
+### Project Status & Workflows
+- **PDF Generation:** Powered entirely by `window.print()`. DO NOT use libraries like html2canvas. Instead, heavily apply `print:hidden`, `print:p-0`, `print:border-none` to inputs and actionable elements so the layout falls back to a clean vector invoice style. The root layout has `print:h-auto print:overflow-visible` to prevent single-page truncation bugs.
+- **Quote Status Sync:** Drafts sync to a `localStorage` array (`cotizaciones_borradores`) holding full JSONs and their current `estado`. 
+- **Auto-Transitions:** Clicking 'Descargar PDF' silently saves and transitions a quote's state from `borrador` straight to `enviada` (Activa) to reflect reality.
 
 ### Forms
 - Use React Hook Form + Zod resolver for all forms
